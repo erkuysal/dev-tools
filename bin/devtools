@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+COMMANDS_DIR="$(dirname "$0")/../commands.d"
+
+list_commands() {
+  echo "Available commands:"
+  for cmd in "$COMMANDS_DIR"/*.sh; do
+    [ -e "$cmd" ] || continue
+    name=$(basename "$cmd" .sh)
+    # Skip shebang, use first real comment as description
+    desc=$(grep -m1 -E '^#( [^!]|[^!])' "$cmd" | sed 's/^# *//')
+    printf "  %-15s %s\n" "$name" "$desc"
+  done
+}
+
+if [[ $# -eq 0 ]]; then
+  echo "Usage: devtools <command> [args...]"
+  list_commands
+  exit 0
+fi
+
+if [[ "$1" == "help" ]]; then
+  if [[ $# -eq 2 ]]; then
+    CMD_PATH="$COMMANDS_DIR/$2.sh"
+    if [[ -x "$CMD_PATH" ]]; then
+      exec "$CMD_PATH" help
+    else
+      echo "Unknown command: $2" >&2
+      list_commands
+      exit 1
+    fi
+  else
+    echo "Usage: devtools <command> [args...]"
+    list_commands
+    exit 0
+  fi
+fi
+
+COMMAND="$1"
+shift
+
+CMD_PATH="$COMMANDS_DIR/$COMMAND.sh"
+if [[ -x "$CMD_PATH" ]]; then
+  exec "$CMD_PATH" "$@"
+else
+  echo "Unknown command: $COMMAND" >&2
+  list_commands
+  exit 1
+fi 
